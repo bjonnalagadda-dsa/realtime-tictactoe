@@ -28,7 +28,14 @@ uvicorn main:app --reload
 
 Open `http://127.0.0.1:8000` in **two separate browser tabs**, use the
 same room code in both, and play against yourself to see real-time
-state sync between two independent connections.
+state sync between two independent connections. "Play again" resets the
+board for both players without reconnecting.
+
+## Deploy
+
+`render.yaml` is a [Render](https://render.com) blueprint — push to GitHub,
+then **New + → Blueprint → this repo**. WebSockets work on Render's free
+plan; room state is in memory, so it clears when the service restarts.
 
 ## What it demonstrates
 

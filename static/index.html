@@ -1,72 +1,211 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Real-Time Tic-Tac-Toe</title>
 <style>
-  body { font-family: system-ui, sans-serif; text-align: center; background: #111; color: #eee; padding: 40px; }
-  h1 { font-size: 22px; }
-  #board { display: grid; grid-template-columns: repeat(3, 100px); gap: 6px; justify-content: center; margin: 20px auto; }
-  .cell { width: 100px; height: 100px; background: #222; border: 2px solid #444; font-size: 40px;
-          display: flex; align-items: center; justify-content: center; cursor: pointer; }
-  .cell:hover { background: #333; }
-  #status { margin: 15px; font-size: 18px; }
-  input { padding: 6px; }
-  button { padding: 6px 12px; }
+  :root {
+    --bg: #f4f5fb; --bg1: #eef0fb; --bg2: #f8f6fc;
+    --card: #fff; --text: #1c1e27; --muted: #6b7080; --border: #e6e7ef;
+    --accent: #2563eb; --accent-strong: #1d4ed8;
+    --x: #2563eb; --o: #ec4899; --win: #10b981;
+    --cell: #f1f2f8;
+    --shadow: 0 1px 3px rgba(19,22,40,.06), 0 12px 32px rgba(19,22,40,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e0f16; --bg1: #14151f; --bg2: #0e0f16;
+      --card: #171826; --text: #e9eaf2; --muted: #9498a8; --border: #262838;
+      --accent: #60a5fa; --accent-strong: #93c5fd;
+      --x: #60a5fa; --o: #f472b6; --win: #34d399;
+      --cell: #1e2030;
+      --shadow: 0 1px 3px rgba(0,0,0,.4), 0 12px 32px rgba(0,0,0,.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--text); line-height: 1.5; min-height: 100vh;
+    background:
+      radial-gradient(1000px 500px at 50% -10%, var(--bg1), transparent 60%),
+      var(--bg);
+    display: flex; align-items: flex-start; justify-content: center;
+  }
+  .wrap { width: 100%; max-width: 460px; padding: 44px 20px 60px; text-align: center; }
+
+  .logo { width: 44px; height: 44px; border-radius: 12px; margin: 0 auto 14px; display: grid; place-items: center;
+    background: linear-gradient(135deg, var(--x), var(--o)); color: #fff; font-size: 22px;
+    box-shadow: 0 6px 18px rgba(37,99,235,.35); }
+  h1 { font-size: 1.3rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); font-size: .88rem; margin: 0 0 22px; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow); padding: 22px; }
+
+  .join { display: flex; gap: 8px; }
+  .join input {
+    flex: 1; padding: 10px 12px; font: inherit; font-size: .92rem; color: var(--text);
+    background: color-mix(in srgb, var(--card) 92%, var(--bg)); border: 1px solid var(--border);
+    border-radius: 10px; outline: none;
+  }
+  .join input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent); }
+  button {
+    font: inherit; font-weight: 600; cursor: pointer; border-radius: 10px; border: 1px solid transparent;
+    padding: 10px 18px; background: var(--accent-strong); color: #fff;
+    box-shadow: 0 5px 14px rgba(29,78,216,.28); transition: transform .06s, background .15s, opacity .15s;
+  }
+  button:hover { background: var(--accent); }
+  button:active { transform: translateY(1px); }
+  button.ghost { background: transparent; color: var(--muted); border-color: var(--border); box-shadow: none; }
+  button.ghost:hover { color: var(--text); border-color: var(--accent); background: transparent; }
+
+  .status { margin: 18px 0 4px; font-size: .95rem; font-weight: 600; min-height: 1.4em; }
+  .status .me { color: var(--muted); font-weight: 500; }
+  .status .turnx { color: var(--x); }
+  .status .turno { color: var(--o); }
+  .status .won { color: var(--win); }
+
+  #board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 14px auto 4px; max-width: 320px; }
+  .cell {
+    aspect-ratio: 1; border-radius: 14px; background: var(--cell); border: 1px solid var(--border);
+    font-size: clamp(36px, 12vw, 52px); font-weight: 700; line-height: 1;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    transition: background .12s, transform .06s, box-shadow .2s;
+    user-select: none;
+  }
+  .cell:hover:not(.filled) { background: color-mix(in srgb, var(--accent) 10%, var(--cell)); }
+  .cell:active:not(.filled) { transform: scale(.97); }
+  .cell.filled { cursor: default; }
+  .cell.x { color: var(--x); }
+  .cell.o { color: var(--o); }
+  .cell.win { box-shadow: 0 0 0 2px var(--win) inset; background: color-mix(in srgb, var(--win) 14%, var(--cell)); }
+  #board.locked .cell { cursor: default; }
+
+  .hint { color: var(--muted); font-size: .8rem; margin-top: 16px; }
+  .rematch { margin-top: 14px; }
+  footer { color: var(--muted); font-size: .78rem; margin-top: 22px; }
+  footer a { color: var(--accent); text-decoration: none; }
 </style>
 </head>
 <body>
-  <h1>Real-Time Multiplayer Tic-Tac-Toe</h1>
-  <p>Open this page in two browser tabs with the same room code to play live.</p>
-  <input id="room" placeholder="room code" value="demo" />
-  <button onclick="connect()">Join Room</button>
-  <div id="status">Not connected</div>
-  <div id="board"></div>
+<div class="wrap">
+  <div class="logo">#</div>
+  <h1>Real-Time Tic-Tac-Toe</h1>
+  <p class="sub">FastAPI + native WebSockets. Server-authoritative, multi-room. Open in two tabs with the same room code to play live.</p>
+
+  <div class="card">
+    <div class="join">
+      <input id="room" placeholder="room code" value="demo" autocomplete="off" />
+      <button id="joinBtn">Join room</button>
+    </div>
+
+    <div class="status" id="status">Not connected</div>
+
+    <div id="board"></div>
+
+    <div class="rematch" id="rematchWrap" hidden>
+      <button class="ghost" id="rematchBtn">Play again</button>
+    </div>
+
+    <div class="hint" id="hint">Enter a room code and join. Share it with a second tab to get the O side.</div>
+  </div>
+
+  <footer><a href="/health">/health</a> &middot; WebSocket at <code>/ws/{room}</code></footer>
+</div>
 
 <script>
-let ws = null;
-let mySymbol = null;
+const $ = (id) => document.getElementById(id);
+const WINS = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+let ws = null, mySymbol = null, state = null;
+
+function winningLine(board, winner) {
+  if (!winner) return [];
+  for (const line of WINS) {
+    if (line.every(i => board[i] === winner)) return line;
+  }
+  return [];
+}
+
+function renderBoard() {
+  const board = $("board");
+  board.innerHTML = "";
+  const b = state ? state.board : Array(9).fill("");
+  const line = state && state.game_over ? winningLine(b, state.winner) : [];
+  const locked = !state || state.game_over || !mySymbol || state.turn !== mySymbol;
+  board.classList.toggle("locked", locked);
+
+  b.forEach((val, i) => {
+    const cell = document.createElement("div");
+    cell.className = "cell" + (val ? " filled " + val.toLowerCase() : "") + (line.includes(i) ? " win" : "");
+    cell.textContent = val;
+    if (!val && !locked) cell.onclick = () => send({ type: "move", position: i });
+    board.appendChild(cell);
+  });
+}
+
+function renderStatus() {
+  const el = $("status");
+  if (!ws) { el.textContent = "Not connected"; return; }
+  if (!state) { el.textContent = "Connecting…"; return; }
+
+  const me = mySymbol ? `<span class="me">You're ${mySymbol}</span> · ` : "";
+  const players = state.players_connected.length;
+
+  if (state.game_over) {
+    if (state.winner) {
+      const mine = state.winner === mySymbol;
+      el.innerHTML = `${me}<span class="won">${mine ? "You win 🎉" : state.winner + " wins"}</span>`;
+    } else {
+      el.innerHTML = `${me}Draw`;
+    }
+    $("rematchWrap").hidden = false;
+    return;
+  }
+  $("rematchWrap").hidden = true;
+
+  if (players < 2) {
+    el.innerHTML = `${me}Waiting for a second player… (room “${escAttr($("room").value)}”)`;
+    return;
+  }
+  const turnCls = state.turn === "X" ? "turnx" : "turno";
+  const yours = state.turn === mySymbol ? " — your move" : "";
+  el.innerHTML = `${me}<span class="${turnCls}">${state.turn} to play</span>${yours}`;
+}
+
+function escAttr(s) { return String(s).replace(/[<>&"]/g, ""); }
+
+function send(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
 
 function connect() {
-  const room = document.getElementById('room').value || 'demo';
-  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-  ws = new WebSocket(`${proto}://${window.location.host}/ws/${room}`);
+  const room = $("room").value.trim() || "demo";
+  $("room").value = room;
+  if (ws) { ws.onclose = null; ws.close(); }
+  mySymbol = null; state = null;
+  $("hint").textContent = "";
+  renderStatus(); renderBoard();
 
-  ws.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    if (data.type === 'assigned_symbol') {
-      mySymbol = data.symbol;
-      document.getElementById('status').innerText = `You are: ${mySymbol}`;
-    } else if (data.type === 'state') {
-      renderBoard(data);
-    } else if (data.type === 'error') {
-      alert(data.message);
-    }
+  const proto = location.protocol === "https:" ? "wss" : "ws";
+  ws = new WebSocket(`${proto}://${location.host}/ws/${encodeURIComponent(room)}`);
+
+  ws.onopen = () => renderStatus();
+  ws.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.type === "assigned_symbol") { mySymbol = data.symbol; }
+    else if (data.type === "state") { state = data; }
+    else if (data.type === "error") { $("hint").textContent = data.message; return; }
+    renderStatus(); renderBoard();
   };
+  ws.onclose = () => { ws = null; renderStatus(); };
 }
 
-function renderBoard(data) {
-  const boardDiv = document.getElementById('board');
-  boardDiv.innerHTML = '';
-  data.board.forEach((val, i) => {
-    const cell = document.createElement('div');
-    cell.className = 'cell';
-    cell.innerText = val;
-    cell.onclick = () => sendMove(i);
-    boardDiv.appendChild(cell);
-  });
+$("joinBtn").addEventListener("click", connect);
+$("room").addEventListener("keydown", (e) => { if (e.key === "Enter") connect(); });
+$("rematchBtn").addEventListener("click", () => send({ type: "reset" }));
 
-  let status = `Turn: ${data.turn} | Players connected: ${data.players_connected.join(', ')}`;
-  if (data.game_over) {
-    status = data.winner ? `🎉 Winner: ${data.winner}` : "Draw!";
-  }
-  document.getElementById('status').innerText = `You are: ${mySymbol} — ${status}`;
-}
-
-function sendMove(position) {
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify({ type: 'move', position }));
-  }
-}
+renderBoard();
 </script>
 </body>
 </html>

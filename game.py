@@ -29,6 +29,13 @@ class GameRoom:
             if ws == websocket:
                 del self.players[symbol]
 
+    def reset(self):
+        """Clear the board for a rematch, keeping both players connected."""
+        self.board = [""] * 9
+        self.turn = "X"
+        self.winner = None
+        self.game_over = False
+
     def make_move(self, symbol: str, position: int) -> bool:
         if self.game_over:
             return False
