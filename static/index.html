@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Real-Time Tic-Tac-Toe</title>
+<style>
+  body { font-family: system-ui, sans-serif; text-align: center; background: #111; color: #eee; padding: 40px; }
+  h1 { font-size: 22px; }
+  #board { display: grid; grid-template-columns: repeat(3, 100px); gap: 6px; justify-content: center; margin: 20px auto; }
+  .cell { width: 100px; height: 100px; background: #222; border: 2px solid #444; font-size: 40px;
+          display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .cell:hover { background: #333; }
+  #status { margin: 15px; font-size: 18px; }
+  input { padding: 6px; }
+  button { padding: 6px 12px; }
+</style>
+</head>
+<body>
+  <h1>Real-Time Multiplayer Tic-Tac-Toe</h1>
+  <p>Open this page in two browser tabs with the same room code to play live.</p>
+  <input id="room" placeholder="room code" value="demo" />
+  <button onclick="connect()">Join Room</button>
+  <div id="status">Not connected</div>
+  <div id="board"></div>
+
+<script>
+let ws = null;
+let mySymbol = null;
+
+function connect() {
+  const room = document.getElementById('room').value || 'demo';
+  const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${window.location.host}/ws/${room}`);
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    if (data.type === 'assigned_symbol') {
+      mySymbol = data.symbol;
+      document.getElementById('status').innerText = `You are: ${mySymbol}`;
+    } else if (data.type === 'state') {
+      renderBoard(data);
+    } else if (data.type === 'error') {
+      alert(data.message);
+    }
+  };
+}
+
+function renderBoard(data) {
+  const boardDiv = document.getElementById('board');
+  boardDiv.innerHTML = '';
+  data.board.forEach((val, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    cell.innerText = val;
+    cell.onclick = () => sendMove(i);
+    boardDiv.appendChild(cell);
+  });
+
+  let status = `Turn: ${data.turn} | Players connected: ${data.players_connected.join(', ')}`;
+  if (data.game_over) {
+    status = data.winner ? `🎉 Winner: ${data.winner}` : "Draw!";
+  }
+  document.getElementById('status').innerText = `You are: ${mySymbol} — ${status}`;
+}
+
+function sendMove(position) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ type: 'move', position }));
+  }
+}
+</script>
+</body>
+</html>
